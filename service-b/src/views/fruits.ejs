@@ -1,0 +1,238 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<title>Fruit Shop</title>
+
+<script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+
+<style>
+
+body { font-family: Arial; padding:20px }
+
+.card{
+  border:1px solid #ccc;
+  padding:10px;
+  margin:10px 0;
+  width:250px;
+}
+
+button{
+  padding:5px 10px;
+  cursor:pointer;
+}
+
+.modal{
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.5);
+}
+
+.modal-content{
+  background:white;
+  padding:20px;
+  width:300px;
+  margin:100px auto;
+  border-radius:5px;
+}
+
+/* CHAT */
+
+#chatBtn{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  padding:10px 20px;
+}
+
+#chatBox{
+  position:fixed;
+  bottom:70px;
+  right:20px;
+  width:300px;
+  height:400px;
+  border:1px solid #aaa;
+  background:white;
+  display:none;
+}
+
+#messages{
+  height:320px;
+  overflow:auto;
+  border-bottom:1px solid #ccc;
+  padding:5px;
+}
+
+#inputArea{
+  display:flex;
+}
+
+#msg{
+  flex:1;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Fruit Shop</h1>
+<h3>User: <%= username %></h3>
+
+
+
+<% fruits.forEach(f => { %>
+
+<div class="card">
+
+<h3><%= f.name %></h3>
+<p>Price: <%= f.price %></p>
+<p>Id: <%= f.id %></p>
+
+<button onclick='openModal("<%= f.id %>","<%= f.name %>","<%= f.price %>")'>
+Buy
+</button>
+
+</div>
+
+<% }) %>
+
+
+
+<div id="modal" class="modal">
+
+<div class="modal-content">
+
+<form action="/order" method="GET">
+
+<h3 id="m-name"></h3>
+
+<p>ID: <span id="m-id"></span></p>
+<input type="hidden" id="fruit-id" name="id">
+
+<p>Price: <span id="m-price"></span></p>
+<input type="hidden" id="fruit-price" name="price">
+
+<input type="hidden" id="fruit-name" name="name">
+
+<input type="hidden" name="userId" value="<%= username %>">
+
+<label>Quantity:</label>
+<input id="m-qty" type="number" name="qty" value="1" min="1">
+
+<br><br>
+
+<button type="submit">Continue</button>
+<button type="button" onclick="closeModal()">Cancel</button>
+
+</form>
+
+</div>
+</div>
+
+
+
+<button id="chatBtn" onclick="toggleChat()">
+Chat với staff
+</button>
+
+
+
+<div id="chatBox">
+
+<div id="messages"></div>
+
+<div id="inputArea">
+
+<input id="msg" placeholder="nhập tin nhắn">
+
+<button onclick="sendMsg()">Send</button>
+
+</div>
+
+</div>
+
+<script>
+
+
+
+function openModal(id,name,price){
+
+document.getElementById("m-id").innerText=id
+document.getElementById("m-name").innerText=name
+document.getElementById("m-price").innerText=price
+
+document.getElementById("fruit-id").value=id
+document.getElementById("fruit-name").value=name
+document.getElementById("fruit-price").value=price
+
+document.getElementById("modal").style.display="block"
+
+}
+
+function closeModal(){
+document.getElementById("modal").style.display="none"
+}
+
+
+
+
+const username="<%= username %>"
+const ABLY_KEY="<%= ablyKey %>"
+
+const ably=new Ably.Realtime(ABLY_KEY)
+
+const channelName="chat-"+username+"-staff"
+
+const channel=ably.channels.get(channelName)
+
+channel.subscribe("message",(msg)=>{
+
+const div=document.createElement("div")
+
+div.innerText=msg.data.user+": "+msg.data.text
+
+document.getElementById("messages").appendChild(div)
+
+})
+
+
+function sendMsg(){
+
+const text=document.getElementById("msg").value
+
+if(!text) return
+
+channel.publish("message",{
+
+user:username,
+to:"staff",
+text:text
+
+})
+
+document.getElementById("msg").value=""
+
+}
+
+
+
+
+function toggleChat(){
+
+const box=document.getElementById("chatBox")
+
+if(box.style.display=="block")
+box.style.display="none"
+else
+box.style.display="block"
+
+}
+
+</script>
+
+</body>
+</html>

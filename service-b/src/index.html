@@ -1,0 +1,28 @@
+﻿<!DOCTYPE html>
+<html>
+<body>
+
+    <h2>Fruit List</h2>
+    <button onclick="loadFruits()">Load Fruits</button>
+
+    <ul id="list"></ul>
+
+    <script>
+        async function loadFruits() {
+            const res = await fetch("http://localhost:3000/fruits", {
+                credentials: "include" 
+            });
+
+            const data = await res.json();
+
+            const list = document.getElementById("list");
+            list.innerHTML = "";
+
+            data.forEach(f => {
+                list.innerHTML += `<li>${f.name} - ${f.price}</li>`;
+            });
+        }
+    </script>
+
+</body>
+</html>

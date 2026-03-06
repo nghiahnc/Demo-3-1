@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Staff Chat</title>
+
+<script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+
+<style>
+
+body{
+  font-family:Arial;
+  display:flex;
+  height:100vh;
+  margin:0;
+}
+
+/* USER LIST */
+
+#users{
+  width:250px;
+  border-right:1px solid #ccc;
+  overflow:auto;
+}
+
+.user{
+  padding:10px;
+  border-bottom:1px solid #eee;
+  cursor:pointer;
+}
+
+.user:hover{
+  background:#f3f3f3;
+}
+
+/* CHAT AREA */
+
+#chat{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+#messages{
+  flex:1;
+  padding:10px;
+  overflow:auto;
+}
+
+#input{
+  border-top:1px solid #ccc;
+  padding:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+
+<div id="users"></div>
+
+
+<div id="chat">
+
+<div id="messages"></div>
+
+<div id="input">
+<input id="msg" placeholder="message" style="width:80%">
+<button onclick="sendMsg()">Send</button>
+</div>
+
+</div>
+
+<script>
+
+
+
+const ABLY_KEY = "<%= ablyKey %>"
+
+console.log("Connecting to Ably...")
+
+const ably = new Ably.Realtime(ABLY_KEY)
+
+ably.connection.on('connected',()=>{
+  console.log("Ably Connected")
+})
+
+ably.connection.on('failed',(err)=>{
+  console.log("Ably Failed",err)
+})
+
+
+const adminChannel = ably.channels.get("staff-inbox")
+
+console.log("Subscribe staff-inbox")
+
+let currentUser = null
+let chatChannel = null
+
+
+adminChannel.subscribe("new-message",(msg)=>{
+
+  console.log("New user message received:",msg)
+
+  const username = msg.data.user
+
+  addUser(username)
+
+})
+
+
+
+function addUser(username){
+
+  console.log("Add user to list:",username)
+
+  if(document.getElementById("user-"+username))
+    return
+
+  const div = document.createElement("div")
+
+  div.className="user"
+  div.id="user-"+username
+
+  div.innerText=username
+
+  div.onclick=()=>openChat(username)
+
+  document.getElementById("users").appendChild(div)
+
+}
+
+
+function openChat(username){
+
+  console.log("Open chat with:",username)
+
+  currentUser = username
+
+  document.getElementById("messages").innerHTML=""
+
+  chatChannel = ably.channels.get("chat-"+username+"-staff")
+
+  console.log("Join channel:","chat-"+username+"-staff")
+
+
+
+  chatChannel.history({ limit:50 }, function(err, result){
+
+    if(err){
+      console.error("History error:",err)
+      return
+    }
+
+    console.log("History loaded:",result.items.length)
+
+    result.items.reverse().forEach(msg=>{
+      addMessage(msg.data.user,msg.data.text)
+    })
+
+  })
+
+
+  chatChannel.subscribe("message",(msg)=>{
+
+    console.log("Realtime message:",msg)
+
+    addMessage(msg.data.user,msg.data.text)
+
+  })
+
+}
+
+
+
+function addMessage(user,text){
+
+  console.log("Add message:",user,text)
+
+  const div = document.createElement("div")
+
+  div.innerText = user + ": " + text
+
+  document.getElementById("messages").appendChild(div)
+
+}
+
+
+
+function sendMsg(){
+
+  const input = document.getElementById("msg")
+
+  const text = input.value
+
+  if(!text || !chatChannel){
+    console.log("Cannot send message. Channel not ready")
+    return
+  }
+
+  console.log("Sending message to:",currentUser)
+
+  chatChannel.publish("message",{
+    user:"staff",
+    text:text
+  })
+
+  input.value=""
+
+}
+
+</script>
+
+</body>
+</html>
